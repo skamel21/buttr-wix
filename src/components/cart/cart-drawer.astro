@@ -136,12 +136,13 @@ const total = cart?.cost.totalAmount.amount ?? "0";
   }
 </aside>
 
-<script>
+<script is:inline>
   // Progressive enhancement: run add / update / remove over fetch so the cart
   // updates in place — no full page reload, and the drawer is never forced
   // open. Plain-form behaviour remains as the no-JS fallback.
   if (!window.__buttrCartWired) {
     window.__buttrCartWired = true;
+    console.debug("[buttr] cart enhancer ready");
 
     let busy = false;
 
