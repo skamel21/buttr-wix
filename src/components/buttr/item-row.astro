@@ -1,7 +1,7 @@
 ---
 import { actions } from "astro:actions";
 import type { CartItem, Product } from "../../lib/wix/types";
-import { formatMoney, getStickerUrl, stripHtml, variantPayload } from "../../lib/buttr";
+import { formatMoney, stripHtml, variantPayload } from "../../lib/buttr";
 
 interface Props {
   product: Product;
@@ -11,7 +11,6 @@ const { product, cartLine } = Astro.props;
 
 const variant = product.variants[0];
 const isSoldOut = !product.availableForSale || !variant?.availableForSale;
-const sticker = getStickerUrl(product.title);
 const price = formatMoney(
   product.priceRange.minVariantPrice.amount,
   product.priceRange.minVariantPrice.currencyCode,
@@ -21,9 +20,6 @@ const description = stripHtml(product.description);
 ---
 
 <div class={`item-row${isSoldOut ? " sold-out" : ""}`}>
-  <div class="item-thumb">
-    <img class="sticker-img" src={sticker} alt="" loading="lazy" />
-  </div>
   <div class="item-info">
     <div class="item-top">
       <span class="item-name">{product.title}</span>
