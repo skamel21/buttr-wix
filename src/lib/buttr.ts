@@ -31,13 +31,34 @@ export function formatMoney(amount: string | number, currencyCode = "USD") {
   }
 }
 
-export function isBrewProduct(p: Product) {
-  const t = `${p.title} ${p.tags.join(" ")}`.toLowerCase();
-  return /beverage|coffee|drink|brew|tea|latte|espresso|cappuccino|matcha|americano|dripper|cortado|decaf/.test(
-    t,
-  );
+/**
+ * Per-half artwork. Keyed by the Wix category slug so you can point any
+ * category at any mascot/sticker without touching the layout code.
+ * If a slug isn't listed here, the fallbacks are used in rotation.
+ */
+export const HALF_VISUALS: Record<string, { mascot: string; headSticker: string }> = {
+  bakes: { mascot: "/buttr/mascot-bakery.png", headSticker: `${S}/croissant.png` },
+  brews: { mascot: "/buttr/mascot-coffee.png", headSticker: `${S}/coffee-bean.png` },
+};
+
+const HALF_FALLBACKS = [
+  { mascot: "/buttr/mascot-bakery.png", headSticker: `${S}/croissant.png` },
+  { mascot: "/buttr/mascot-coffee.png", headSticker: `${S}/coffee-bean.png` },
+];
+
+export function halfVisual(slug: string, index: number) {
+  return HALF_VISUALS[slug] ?? HALF_FALLBACKS[index % HALF_FALLBACKS.length];
 }
 
+const ORDINALS = ["One", "Two", "Three", "Four", "Five", "Six"];
+export function halfOrdinal(index: number) {
+  return ORDINALS[index] ?? String(index + 1);
+}
+
+/**
+ * Picks a decorative sticker for a menu item based on keywords in its title.
+ * Purely cosmetic — no setup required; falls back to the bakery mascot.
+ */
 export function getStickerUrl(title: string, extra = ""): string {
   const t = `${title} ${extra}`.toLowerCase();
   if (/croissant/.test(t)) return `${S}/croissant.png`;
@@ -50,20 +71,6 @@ export function getStickerUrl(title: string, extra = ""): string {
   if (/coffee|bean/.test(t)) return `${S}/coffee-bean.png`;
   const isBrew = /beverage|coffee|drink|brew|tea/.test(t);
   return isBrew ? `${S}/coffee-cup.png` : `${S}/mascot-bakery-sm.png`;
-}
-
-const BAKES_SUBCATEGORY_ORDER = ["Classics", "Signature", "Sweet Treats"] as const;
-export type BakesSubcategory = (typeof BAKES_SUBCATEGORY_ORDER)[number];
-
-export function getBakesSubcategory(p: Product): BakesSubcategory {
-  const t = p.title.toLowerCase();
-  if (/cookie|donut|doughnut|brownie|tart|cake|sweet|candy|chocolate bar/.test(t)) {
-    return "Sweet Treats";
-  }
-  if (/muffin|swirl|cinnamon|brioche|knot|cardamom|bun|roll|babka|danish|scone/.test(t)) {
-    return "Signature";
-  }
-  return "Classics";
 }
 
 /** Build the add-to-cart variant payload matching the Wix actions schema. */
@@ -80,11 +87,3 @@ export function variantPayload(p: Product) {
   }
   return JSON.stringify({ variantId: variant.id });
 }
-
-export function groupMenu(products: Product[]) {
-  const bakes = products.filter((p) => !isBrewProduct(p));
-  const brews = products.filter((p) => isBrewProduct(p));
-  return { bakes, brews };
-}
-
-export { BAKES_SUBCATEGORY_ORDER };

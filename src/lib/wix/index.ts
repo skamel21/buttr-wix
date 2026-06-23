@@ -25,7 +25,7 @@ function buildSearchSort(sortKey?: string, reverse?: boolean) {
   if (!fieldName) return undefined;
   return [{ fieldName, order: reverse ? "DESC" : "ASC" }] as any;
 }
-import type { Cart, Collection, Product } from "./types";
+import type { Cart, Collection, MenuHalf, MenuSubgroup, Product } from "./types";
 
 function resolveWixImage(
   image: unknown,
@@ -388,6 +388,93 @@ export async function getCollectionProducts({
   }
 
   return products.map(reshapeProduct);
+}
+
+async function getProductsByCategoryId(categoryId: string): Promise<Product[]> {
+  const { products = [] } = await productsV3.searchProducts(
+    {
+      filter: {
+        "directCategoriesInfo.categories": {
+          $matchItems: [{ _id: categoryId }],
+        },
+      } as any,
+      cursorPaging: { limit: 100 },
+    },
+    { fields: PRODUCT_FIELDS_DETAIL }
+  );
+  return products.map(reshapeProduct);
+}
+
+/**
+ * Builds the storefront menu directly from the Wix Stores category tree.
+ *
+ * Structure (all editable from the Wix dashboard, no code changes needed):
+ *   - Each TOP-LEVEL category becomes a "half" (a menu section with its own
+ *     mascot / alternating layout), ordered by its position in Wix.
+ *   - Each of its SUB-categories becomes a subgroup listing the products
+ *     assigned to it. A top-level category with no sub-categories renders as
+ *     a single subgroup of its own products.
+ *
+ * Hidden categories (not visible, or whose slug starts with `hidden`) are
+ * skipped, as are empty categories.
+ */
+export async function getMenu(): Promise<MenuHalf[]> {
+  const { categories: items = [] } = await categories.searchCategories(
+    { cursorPaging: { limit: 100 } },
+    { treeReference: CATEGORIES_TREE_REFERENCE }
+  );
+
+  const visible = items.filter(
+    (c) => c.visible !== false && !(c.slug ?? "").startsWith("hidden")
+  );
+
+  const order = (c: categories.Category) => c.parentCategory?.index ?? 0;
+  const byOrder = (a: categories.Category, b: categories.Category) =>
+    order(a) - order(b) || (a.name ?? "").localeCompare(b.name ?? "");
+
+  const tops = visible.filter((c) => !c.parentCategory?._id).sort(byOrder);
+
+  const halves: MenuHalf[] = [];
+
+  for (const top of tops) {
+    const children = visible
+      .filter((c) => c.parentCategory?._id === top._id)
+      .sort(byOrder);
+
+    let subgroups: MenuSubgroup[];
+    if (children.length > 0) {
+      subgroups = await Promise.all(
+        children.map(async (ch) => ({
+          id: ch._id!,
+          title: ch.name!,
+          slug: ch.slug!,
+          products: await getProductsByCategoryId(ch._id!),
+        }))
+      );
+    } else {
+      subgroups = [
+        {
+          id: top._id!,
+          title: top.name!,
+          slug: top.slug!,
+          products: await getProductsByCategoryId(top._id!),
+        },
+      ];
+    }
+
+    subgroups = subgroups.filter((s) => s.products.length > 0);
+    if (subgroups.length === 0) continue;
+
+    halves.push({
+      id: top._id!,
+      title: top.name!,
+      slug: top.slug!,
+      description: top.description ?? "",
+      subgroups,
+    });
+  }
+
+  return halves;
 }
 
 export async function getCollections(): Promise<Collection[]> {

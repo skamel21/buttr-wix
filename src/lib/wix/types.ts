@@ -53,6 +53,21 @@ export type Collection = {
   path: string;
 };
 
+export type MenuSubgroup = {
+  id: string;
+  title: string;
+  slug: string;
+  products: Product[];
+};
+
+export type MenuHalf = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  subgroups: MenuSubgroup[];
+};
+
 export type Image = {
   url: string;
   altText: string;

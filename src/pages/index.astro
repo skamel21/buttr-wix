@@ -3,16 +3,28 @@ import Base from "../components/buttr/base.astro";
 import SiteNav from "../components/buttr/site-nav.astro";
 import MenuGroup from "../components/buttr/menu-group.astro";
 import CartDrawer from "../components/buttr/cart-drawer.astro";
-import { getProducts, getCart } from "../lib/wix";
-import type { CartItem } from "../lib/wix/types";
-import { groupMenu } from "../lib/buttr";
+import { getMenu, getProducts, getCart } from "../lib/wix";
+import type { CartItem, MenuHalf } from "../lib/wix/types";
 
-const [products, cart] = await Promise.all([
-  getProducts({ sortKey: "name" }),
-  getCart(),
-]);
+const [menu, cart] = await Promise.all([getMenu(), getCart()]);
 
-const { bakes, brews } = groupMenu(products);
+// Fallback: if no categories are set up in Wix yet, show every product in a
+// single section so the store still works out of the box.
+let halves: MenuHalf[] = menu;
+if (halves.length === 0) {
+  const products = await getProducts({ sortKey: "name" });
+  if (products.length > 0) {
+    halves = [
+      {
+        id: "all",
+        title: "Menu",
+        slug: "all",
+        description: "",
+        subgroups: [{ id: "all", title: "All", slug: "all", products }],
+      },
+    ];
+  }
+}
 
 const cartByHandle = new Map<string, CartItem>();
 for (const line of cart?.lines ?? []) {
@@ -63,15 +75,14 @@ const totalQuantity = cart?.totalQuantity ?? 0;
       </div>
 
       {
-        products.length === 0 ? (
+        halves.length === 0 ? (
           <div style="text-align:center;padding:96px 0;color:var(--muted-fg);font-family:var(--font-mono);font-size:13px;letter-spacing:0.12em;text-transform:uppercase">
             No products in the menu yet.
           </div>
         ) : (
-          <>
-            {bakes.length > 0 && <MenuGroup products={bakes} half="bakes" cartByHandle={cartByHandle} />}
-            {brews.length > 0 && <MenuGroup products={brews} half="brews" cartByHandle={cartByHandle} />}
-          </>
+          halves.map((half, i) => (
+            <MenuGroup half={half} index={i} cartByHandle={cartByHandle} />
+          ))
         )
       }
     </div>
