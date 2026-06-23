@@ -1,7 +1,7 @@
 ---
 import { actions } from "astro:actions";
-import type { CartItem, Product } from "../../lib/wix/types";
-import { formatMoney, stripHtml, variantPayload } from "../../lib/buttr";
+import type { CartItem, Product } from "../lib/wix/types";
+import { formatMoney, stripHtml, variantPayload } from "../lib/buttr";
 
 interface Props {
   product: Product;
@@ -42,7 +42,7 @@ const description = stripHtml(product.description);
       isSoldOut ? (
         <span class="sold-tag">Sold out</span>
       ) : qty === 0 ? (
-        <form method="post" action={actions.addItemToCart} data-cart data-cart-open>
+        <form method="post" action={actions.addItemToCart} data-cart="add" data-cart-open>
           <input type="hidden" name="productId" value={product.id} />
           <input type="hidden" name="variant" value={variantPayload(product)} />
           <button type="submit" class="item-add-btn" aria-label="Add to cart">
@@ -54,7 +54,7 @@ const description = stripHtml(product.description);
         </form>
       ) : (
         <div class="item-counter animate-counter-in">
-          <form method="post" action={actions.updateItemQuantity} data-cart style="display:inline-flex">
+          <form method="post" action={actions.updateItemQuantity} data-cart="update" style="display:inline-flex">
             <input type="hidden" name="lineId" value={cartLine!.id} />
             <input type="hidden" name="variantId" value={cartLine!.merchandise.id} />
             <input type="hidden" name="quantity" value={qty - 1} />
@@ -65,7 +65,7 @@ const description = stripHtml(product.description);
             </button>
           </form>
           <span class="v">{qty}</span>
-          <form method="post" action={actions.updateItemQuantity} data-cart style="display:inline-flex">
+          <form method="post" action={actions.updateItemQuantity} data-cart="update" style="display:inline-flex">
             <input type="hidden" name="lineId" value={cartLine!.id} />
             <input type="hidden" name="variantId" value={cartLine!.merchandise.id} />
             <input type="hidden" name="quantity" value={qty + 1} />

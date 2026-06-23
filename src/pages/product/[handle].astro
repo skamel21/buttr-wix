@@ -8,9 +8,9 @@ export const wixMetadata = {
 };
 
 import { actions } from "astro:actions";
-import Base from "../../components/buttr/base.astro";
-import CartDrawer from "../../components/buttr/cart-drawer.astro";
-import Logo from "../../components/buttr/logo.astro";
+import Base from "../../components/layout/storefront-layout.astro";
+import CartDrawer from "../../components/cart/cart-drawer.astro";
+import Logo from "../../components/logo.astro";
 import { getProduct, getCart } from "../../lib/wix";
 import { formatMoney, stripHtml, variantPayload } from "../../lib/buttr";
 import { SEO } from "@wix/seo/components";
@@ -99,7 +99,7 @@ const productJsonLd = {
           soldOut ? (
             <button class="pdp-add" disabled>Sold out</button>
           ) : (
-            <form method="post" action={actions.addItemToCart} data-cart data-cart-open>
+            <form method="post" action={actions.addItemToCart} data-cart="add" data-cart-open>
               <input type="hidden" name="productId" value={product.id} />
               <input type="hidden" name="variant" value={variantPayload(product)} />
               <button type="submit" class="pdp-add">

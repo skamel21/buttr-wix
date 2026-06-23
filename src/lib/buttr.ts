@@ -55,24 +55,6 @@ export function halfOrdinal(index: number) {
   return ORDINALS[index] ?? String(index + 1);
 }
 
-/**
- * Picks a decorative sticker for a menu item based on keywords in its title.
- * Purely cosmetic — no setup required; falls back to the bakery mascot.
- */
-export function getStickerUrl(title: string, extra = ""): string {
-  const t = `${title} ${extra}`.toLowerCase();
-  if (/croissant/.test(t)) return `${S}/croissant.png`;
-  if (/baguette|sourdough|loaf|bread|olive|miso|honey/.test(t)) return `${S}/baguette.png`;
-  if (/brioche|knot|bun|roll|cardamom/.test(t)) return `${S}/dough-mascot.png`;
-  if (/cookie|tart|cake|sweet|pastry/.test(t)) return `${S}/toast-butter.png`;
-  if (/espresso|cortado|cappuccino|latte|americano|decaf/.test(t)) return `${S}/coffee-cup.png`;
-  if (/matcha|chai|chocolate|non.coffee|herbal/.test(t)) return `${S}/takeaway-cup.png`;
-  if (/single.origin|tasting|flight|filter|pour|dripper|ceramic/.test(t)) return `${S}/coffee-bean.png`;
-  if (/coffee|bean/.test(t)) return `${S}/coffee-bean.png`;
-  const isBrew = /beverage|coffee|drink|brew|tea/.test(t);
-  return isBrew ? `${S}/coffee-cup.png` : `${S}/mascot-bakery-sm.png`;
-}
-
 /** Build the add-to-cart variant payload matching the Wix actions schema. */
 export function variantPayload(p: Product) {
   const variant = p.variants[0];
