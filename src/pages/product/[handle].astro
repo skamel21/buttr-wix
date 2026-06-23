@@ -99,7 +99,7 @@ const productJsonLd = {
           soldOut ? (
             <button class="pdp-add" disabled>Sold out</button>
           ) : (
-            <form method="post" action={actions.addItemToCart} data-cart="add" data-cart-open>
+            <form method="post" action={actions.addItemToCart} data-cart="add">
               <input type="hidden" name="productId" value={product.id} />
               <input type="hidden" name="variant" value={variantPayload(product)} />
               <button type="submit" class="pdp-add">

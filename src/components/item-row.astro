@@ -42,7 +42,7 @@ const description = stripHtml(product.description);
       isSoldOut ? (
         <span class="sold-tag">Sold out</span>
       ) : qty === 0 ? (
-        <form method="post" action={actions.addItemToCart} data-cart="add" data-cart-open>
+        <form method="post" action={actions.addItemToCart} data-cart="add">
           <input type="hidden" name="productId" value={product.id} />
           <input type="hidden" name="variant" value={variantPayload(product)} />
           <button type="submit" class="item-add-btn" aria-label="Add to cart">

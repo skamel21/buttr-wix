@@ -152,9 +152,14 @@ const total = cart?.cost.totalAmount.amount ?? "0";
     window.__buttrCartWired = true;
 
     let busy = false;
-    const openDrawer = () => {
-      const c = document.getElementById("cart-modal");
-      if (c) c.checked = true;
+
+    // Brief feedback on the cart button without opening the drawer.
+    const bumpCart = () => {
+      document.querySelectorAll(".cart-btn").forEach((btn) => {
+        btn.classList.remove("animate-cart-bump");
+        void btn.offsetWidth;
+        btn.classList.add("animate-cart-bump");
+      });
     };
 
     async function refresh() {
@@ -200,7 +205,9 @@ const total = cart?.cost.totalAmount.amount ?? "0";
           return;
         }
         await refresh();
-        if (form.hasAttribute("data-cart-open")) openDrawer();
+        // Adding never opens the drawer — just nudge the cart button so the
+        // shopper sees the count change. They open the cart when they're ready.
+        if (kind === "add") bumpCart();
       } catch (err) {
         form.submit();
         return;
