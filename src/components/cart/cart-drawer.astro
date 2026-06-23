@@ -138,15 +138,12 @@ const total = cart?.cost.totalAmount.amount ?? "0";
 
 <script is:inline>
   // Progressive enhancement: run add / update / remove over fetch so the cart
-  // updates in place — no full page reload, and the drawer is never forced
-  // open. Plain-form behaviour remains as the no-JS fallback.
+  // updates in place — no full page reload, the drawer never opens on its own,
+  // and clicks are queued (never dropped). Plain forms are the no-JS fallback.
   if (!window.__buttrCartWired) {
     window.__buttrCartWired = true;
     console.debug("[buttr] cart enhancer ready");
 
-    let busy = false;
-
-    // Brief feedback on the cart button without opening the drawer.
     const bumpCart = () => {
       document.querySelectorAll(".cart-btn").forEach((btn) => {
         btn.classList.remove("animate-cart-bump");
@@ -155,61 +152,85 @@ const total = cart?.cost.totalAmount.amount ?? "0";
       });
     };
 
-    const swapFrom = (doc, sel, forceReveal) => {
-      const next = doc.querySelector(sel);
-      const cur = document.querySelector(sel);
-      if (!next || !cur) return;
-      if (forceReveal)
-        next.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
-      cur.replaceWith(next);
+    const num = (s) => parseInt(s || "0", 10) || 0;
+
+    // Optimistic: reflect an add instantly before the network confirms it.
+    const optimisticAdd = (form) => {
+      const handle = form.getAttribute("data-handle");
+      const chip = form
+        .closest(".item-row")
+        ?.querySelector(`.item-qty[data-handle="${CSS.escape(handle || "")}"]`);
+      if (chip) {
+        chip.textContent = String(num(chip.textContent) + 1);
+        chip.hidden = false;
+      }
+      document.querySelectorAll(".cart-badge").forEach((b) => {
+        b.textContent = String(num(b.textContent) + 1);
+        b.style.transform = "scale(1)";
+      });
+      bumpCart();
     };
 
-    // Apply the cart/menu/badge state from a freshly rendered page document.
+    // Reconcile to server truth from a freshly rendered page document.
     const apply = (doc) => {
-      swapFrom(doc, ".cart-drawer", false);
-      swapFrom(doc, ".menu-wrap", true);
+      const nextDrawer = doc.querySelector(".cart-drawer");
+      const curDrawer = document.querySelector(".cart-drawer");
+      if (nextDrawer && curDrawer) curDrawer.replaceWith(nextDrawer);
+
       const nb = doc.querySelector(".cart-badge");
       if (nb)
         document.querySelectorAll(".cart-badge").forEach((b) => {
           b.textContent = nb.textContent;
           b.style.transform = nb.style.transform;
         });
+
+      const qtys = {};
+      doc.querySelectorAll(".item-qty[data-handle]").forEach((q) => {
+        qtys[q.getAttribute("data-handle")] = q.textContent || "0";
+      });
+      document.querySelectorAll(".item-qty[data-handle]").forEach((q) => {
+        const v = qtys[q.getAttribute("data-handle")] ?? "0";
+        q.textContent = v;
+        q.hidden = v === "0";
+      });
     };
 
-    // Capture phase + stopImmediatePropagation so Astro's ClientRouter never
-    // takes over the submit (which would navigate the page).
+    // Serialize network work so rapid clicks all apply, in order. Only the
+    // last queued response reconciles the UI, so counts don't visibly bounce.
+    let chain = Promise.resolve();
+    let pending = 0;
+    const enqueue = (task) => {
+      pending++;
+      const run = () => task(pending === 1).finally(() => pending--);
+      chain = chain.then(run, run);
+    };
+
+    // Capture phase + stopImmediatePropagation so nothing else (e.g. a router)
+    // takes over the submit and navigates the page.
     document.addEventListener(
       "submit",
-      async (e) => {
+      (e) => {
         const form = e.target;
         if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-cart"))
           return;
-
         e.preventDefault();
         e.stopImmediatePropagation();
-        if (busy) return;
-        busy = true;
 
         const kind = form.getAttribute("data-cart");
-        try {
-          // POST exactly like the native form; follow the action's redirect so
-          // cart cookies are applied, then reuse that HTML to update the page.
-          const res = await fetch(form.action, {
-            method: "POST",
-            body: new FormData(form),
-          });
-          const doc = new DOMParser().parseFromString(
-            await res.text(),
-            "text/html",
-          );
-          apply(doc);
-          if (kind === "add") bumpCart();
-        } catch (err) {
-          // Last resort only: reload so the cart still reflects the change.
-          location.reload();
-        } finally {
-          busy = false;
-        }
+        const url = form.action;
+        const body = new FormData(form);
+        if (kind === "add") optimisticAdd(form);
+
+        enqueue(async (isLast) => {
+          try {
+            const res = await fetch(url, { method: "POST", body });
+            if (res.ok && isLast) {
+              apply(new DOMParser().parseFromString(await res.text(), "text/html"));
+            }
+          } catch (err) {
+            console.error("[buttr] cart update failed", err);
+          }
+        });
       },
       true,
     );

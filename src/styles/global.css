@@ -269,15 +269,15 @@ button:focus-visible {
 .item-add-btn:hover  { background: var(--deep); color: var(--paper); transform: scale(1.05); }
 .item-add-btn:active { transform: scale(0.96); }
 
-/* Counter */
-.item-counter {
-  display: inline-flex; align-items: center;
-  border: 1px solid var(--deep); border-radius: 999px; padding: 3px;
-  flex-shrink: 0;
+/* Action cluster: quantity chip + add button */
+.item-action { display: flex; align-items: center; gap: 10px; }
+.item-qty {
+  min-width: 26px; height: 26px; padding: 0 8px;
+  border-radius: 999px; background: var(--cream); border: 1px solid var(--rule);
+  color: var(--deep); font-family: var(--font-mono); font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
 }
-.item-counter button { width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: var(--deep); transition: background 0.15s, color 0.15s; }
-.item-counter button:hover { background: var(--deep); color: var(--paper); }
-.item-counter .v { min-width: 28px; text-align: center; font-family: var(--font-mono); font-size: 13px; color: var(--deep); }
+.item-qty[hidden] { display: none; }
 
 /* Sold tag */
 .sold-tag {
