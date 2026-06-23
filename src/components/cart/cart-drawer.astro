@@ -137,17 +137,9 @@ const total = cart?.cost.totalAmount.amount ?? "0";
 </aside>
 
 <script>
-  // Progressive enhancement: run add / update / remove through the Astro
-  // Actions client so the cart updates without a full page reload. The forms
-  // still submit natively (with a reload) if JS is unavailable.
-  import { actions } from "astro:actions";
-
-  const ACTIONS = {
-    add: actions.addItemToCart,
-    update: actions.updateItemQuantity,
-    delete: actions.deleteItemFromCart,
-  };
-
+  // Progressive enhancement: run add / update / remove over fetch so the cart
+  // updates in place — no full page reload, and the drawer is never forced
+  // open. Plain-form behaviour remains as the no-JS fallback.
   if (!window.__buttrCartWired) {
     window.__buttrCartWired = true;
 
@@ -162,58 +154,63 @@ const total = cart?.cost.totalAmount.amount ?? "0";
       });
     };
 
-    async function refresh() {
-      const res = await fetch(location.pathname + location.search, {
-        headers: { "x-cart-refresh": "1" },
-      });
-      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    const swapFrom = (doc, sel, forceReveal) => {
+      const next = doc.querySelector(sel);
+      const cur = document.querySelector(sel);
+      if (!next || !cur) return;
+      if (forceReveal)
+        next.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
+      cur.replaceWith(next);
+    };
 
-      const swap = (sel, forceReveal) => {
-        const next = doc.querySelector(sel);
-        const cur = document.querySelector(sel);
-        if (!next || !cur) return;
-        if (forceReveal)
-          next.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
-        cur.replaceWith(next);
-      };
-
-      swap(".cart-drawer", false);
-      swap(".menu-wrap", true);
-
+    // Apply the cart/menu/badge state from a freshly rendered page document.
+    const apply = (doc) => {
+      swapFrom(doc, ".cart-drawer", false);
+      swapFrom(doc, ".menu-wrap", true);
       const nb = doc.querySelector(".cart-badge");
       if (nb)
         document.querySelectorAll(".cart-badge").forEach((b) => {
           b.textContent = nb.textContent;
           b.style.transform = nb.style.transform;
         });
-    }
+    };
 
-    document.addEventListener("submit", async (e) => {
-      const form = e.target;
-      if (!(form instanceof HTMLFormElement)) return;
-      const kind = form.getAttribute("data-cart");
-      const action = kind && ACTIONS[kind];
-      if (!action) return;
-
-      e.preventDefault();
-      if (busy) return;
-      busy = true;
-      try {
-        const { error } = await action(new FormData(form));
-        if (error) {
-          form.submit();
+    // Capture phase + stopImmediatePropagation so Astro's ClientRouter never
+    // takes over the submit (which would navigate the page).
+    document.addEventListener(
+      "submit",
+      async (e) => {
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-cart"))
           return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (busy) return;
+        busy = true;
+
+        const kind = form.getAttribute("data-cart");
+        try {
+          // POST exactly like the native form; follow the action's redirect so
+          // cart cookies are applied, then reuse that HTML to update the page.
+          const res = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+          });
+          const doc = new DOMParser().parseFromString(
+            await res.text(),
+            "text/html",
+          );
+          apply(doc);
+          if (kind === "add") bumpCart();
+        } catch (err) {
+          // Last resort only: reload so the cart still reflects the change.
+          location.reload();
+        } finally {
+          busy = false;
         }
-        await refresh();
-        // Adding never opens the drawer — just nudge the cart button so the
-        // shopper sees the count change. They open the cart when they're ready.
-        if (kind === "add") bumpCart();
-      } catch (err) {
-        form.submit();
-        return;
-      } finally {
-        busy = false;
-      }
-    });
+      },
+      true,
+    );
   }
 </script>
