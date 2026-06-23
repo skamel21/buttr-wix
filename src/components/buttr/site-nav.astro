@@ -1,0 +1,50 @@
+---
+import Logo from "./logo.astro";
+
+interface Props {
+  totalQuantity?: number;
+}
+const { totalQuantity = 0 } = Astro.props;
+---
+
+<nav class="site-nav" id="site-nav">
+  <a href="#top" aria-label="buttr home">
+    <Logo height={30} />
+  </a>
+  <div class="nav-center">
+    <a href="#menu" class="nav-link">Menu</a>
+    <a href="#story" class="nav-link">Story</a>
+  </div>
+  <div class="nav-right">
+    <label class="cart-btn" for="cart-modal" aria-label="Open cart">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        style="width:17px;height:17px"
+      >
+        <path d="M5 7h14l-1.2 11.2A2 2 0 0 1 15.8 20H8.2a2 2 0 0 1-2-1.8L5 7z"></path>
+        <path d="M9 7V5a3 3 0 0 1 6 0v2"></path>
+      </svg>
+      <span class="cart-badge" style={`transform:scale(${totalQuantity > 0 ? 1 : 0})`}>
+        {totalQuantity}
+      </span>
+    </label>
+  </div>
+</nav>
+
+<script is:inline>
+  (function () {
+    const nav = document.getElementById("site-nav");
+    if (!nav) return;
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * 0.82) nav.classList.add("scrolled");
+      else nav.classList.remove("scrolled");
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
+</script>

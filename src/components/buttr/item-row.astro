@@ -1,0 +1,76 @@
+---
+import { actions } from "astro:actions";
+import type { CartItem, Product } from "../../lib/wix/types";
+import { formatMoney, getStickerUrl, variantPayload } from "../../lib/buttr";
+
+interface Props {
+  product: Product;
+  cartLine?: CartItem;
+}
+const { product, cartLine } = Astro.props;
+
+const variant = product.variants[0];
+const isSoldOut = !product.availableForSale || !variant?.availableForSale;
+const sticker = getStickerUrl(product.title);
+const price = formatMoney(
+  product.priceRange.minVariantPrice.amount,
+  product.priceRange.minVariantPrice.currencyCode,
+);
+const qty = cartLine?.quantity ?? 0;
+---
+
+<div class={`item-row${isSoldOut ? " sold-out" : ""}`}>
+  <div class="item-thumb">
+    <img class="sticker-img" src={sticker} alt="" loading="lazy" />
+  </div>
+  <div class="item-info">
+    <div class="item-top">
+      <span class="item-name">{product.title}</span>
+      <span class="item-price">{price}</span>
+    </div>
+    {product.description && <div class="item-desc">{product.description}</div>}
+  </div>
+  <div>
+    {
+      isSoldOut ? (
+        <span class="sold-tag">Sold out</span>
+      ) : qty === 0 ? (
+        <form method="post" action={actions.addItemToCart}>
+          <input type="hidden" name="productId" value={product.id} />
+          <input type="hidden" name="variant" value={variantPayload(product)} />
+          <button type="submit" class="item-add-btn" aria-label="Add to cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </form>
+      ) : (
+        <div class="item-counter animate-counter-in">
+          <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+            <input type="hidden" name="lineId" value={cartLine!.id} />
+            <input type="hidden" name="variantId" value={cartLine!.merchandise.id} />
+            <input type="hidden" name="quantity" value={qty - 1} />
+            <button type="submit" aria-label="decrease">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:12px;height:12px">
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </form>
+          <span class="v">{qty}</span>
+          <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+            <input type="hidden" name="lineId" value={cartLine!.id} />
+            <input type="hidden" name="variantId" value={cartLine!.merchandise.id} />
+            <input type="hidden" name="quantity" value={qty + 1} />
+            <button type="submit" aria-label="increase">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:12px;height:12px">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      )
+    }
+  </div>
+</div>

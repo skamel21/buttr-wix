@@ -1,0 +1,8 @@
+---
+interface Props {
+  height?: number;
+}
+const { height = 30 } = Astro.props;
+---
+
+<span class="logo-mask" style={`height:${height}px`} role="img" aria-label="buttr"></span>

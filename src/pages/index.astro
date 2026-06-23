@@ -1,14 +1,149 @@
 ---
-import Carousel from "../components/carousel.astro";
-import ThreeItemGrid from "../components/grid/three-items.astro";
-import Hero from "../components/hero.astro";
-import Footer from "../components/layout/footer.astro";
-import RootLayout from "../components/layout/layout.astro";
+import Base from "../components/buttr/base.astro";
+import SiteNav from "../components/buttr/site-nav.astro";
+import MenuGroup from "../components/buttr/menu-group.astro";
+import CartDrawer from "../components/buttr/cart-drawer.astro";
+import { getProducts, getCart } from "../lib/wix";
+import type { CartItem } from "../lib/wix/types";
+import { groupMenu } from "../lib/buttr";
+
+const [products, cart] = await Promise.all([
+  getProducts({ sortKey: "name" }),
+  getCart(),
+]);
+
+const { bakes, brews } = groupMenu(products);
+
+const cartByHandle = new Map<string, CartItem>();
+for (const line of cart?.lines ?? []) {
+  cartByHandle.set(line.merchandise.product.handle, line);
+}
+const totalQuantity = cart?.totalQuantity ?? 0;
 ---
 
-<RootLayout>
-  <Hero />
-  <ThreeItemGrid />
-  <Carousel />
-  <Footer />
-</RootLayout>
+<Base>
+  <div class="relative z-50">
+    <SiteNav totalQuantity={totalQuantity} />
+  </div>
+
+  <!-- Hero -->
+  <header class="hero-section" id="top">
+    <div class="hero-bg">
+      <video autoplay muted loop playsinline preload="auto" src="/buttr/hero.mp4"></video>
+    </div>
+    <div class="hero-content">
+      <div class="hero-pip">THE OVEN IS ON</div>
+      <h1>
+        <img class="hero-wordmark" src="/buttr/stickers/buttr-mark-headline.png" alt="buttr" />
+      </h1>
+      <p class="hero-sub">
+        A small bakery and slow coffee — delivered warm to your door.
+      </p>
+      <a href="#menu" class="hero-cta">
+        <img src="/buttr/stickers/croissant.png" alt="" />
+        Order now
+      </a>
+    </div>
+  </header>
+
+  <!-- Menu -->
+  <section class="menu-section" id="menu">
+    <div class="menu-wrap">
+      <div class="section-head">
+        <span class="section-eyebrow">The Menu · Two Halves</span>
+        <h2 class="section-title reveal">
+          <em>Bakes</em> &amp; <em>Brews.</em>
+          <br />
+          Nothing more.
+        </h2>
+        <p class="section-blurb reveal">
+          A short menu, baked fresh and shipped same day. Two halves of the same
+          warm hour.
+        </p>
+      </div>
+
+      {
+        products.length === 0 ? (
+          <div style="text-align:center;padding:96px 0;color:var(--muted-fg);font-family:var(--font-mono);font-size:13px;letter-spacing:0.12em;text-transform:uppercase">
+            No products in the menu yet.
+          </div>
+        ) : (
+          <>
+            {bakes.length > 0 && <MenuGroup products={bakes} half="bakes" cartByHandle={cartByHandle} />}
+            {brews.length > 0 && <MenuGroup products={brews} half="brews" cartByHandle={cartByHandle} />}
+          </>
+        )
+      }
+    </div>
+  </section>
+
+  <!-- Story -->
+  <section class="story-section" id="story">
+    <div class="story-wrap">
+      <img
+        class="story-badge animate-slow-spin"
+        src="/buttr/stickers/badge-craft.png"
+        alt="A warm corner for coffee and thoughtful craft"
+        loading="lazy"
+      />
+      <h2 class="story-title reveal">Built on <em>warmth.</em></h2>
+      <p class="story-body reveal">
+        buttr started in a small oven, in a kitchen in Cairo, with one stubborn
+        idea — that comfort lives in the smallest rituals: the first crackle of a
+        crust, the steam off a cup, the warm box on the doorstep.
+      </p>
+      <span class="story-sign">— The buttr team</span>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <span class="logo-mask" style="height:90px" role="img" aria-label="buttr"></span>
+        <div class="footer-right">
+          <p class="footer-tagline">Baked fresh. Shipped same day. Online only.</p>
+          <div class="footer-links">
+            <a href="#">Instagram</a>
+            <a href="#menu">Shop</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bot">
+        <span>© 2026 buttr coffee &amp; bakery</span>
+      </div>
+    </div>
+  </footer>
+
+  <CartDrawer cart={cart} />
+
+  <script is:inline>
+    // Reveal on scroll
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("in");
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
+    );
+    document.querySelectorAll(".reveal:not(.in)").forEach((el) => io.observe(el));
+
+    // Smooth anchor scroll
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest("a[href^='#']");
+      if (!a) return;
+      const id = a.getAttribute("href");
+      if (id && id.length > 1) {
+        const el = document.querySelector(id);
+        if (el) {
+          e.preventDefault();
+          window.scrollTo({ top: el.offsetTop - 8, behavior: "smooth" });
+        }
+      }
+    });
+  </script>
+</Base>

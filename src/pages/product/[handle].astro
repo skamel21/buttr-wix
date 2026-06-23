@@ -8,20 +8,19 @@ export const wixMetadata = {
 };
 
 import { actions } from "astro:actions";
-import Footer from "../../components/layout/footer.astro";
-import Layout from "../../components/layout/layout.astro";
-import Gallery from "../../components/product/gallery.astro";
-import ProductDescription from "../../components/product/product-description.astro";
-import RelatedProducts from "../../components/product/related-products.astro";
-import { getProduct } from "../../lib/wix";
-import { type Image } from "../../lib/wix/types";
+import Base from "../../components/buttr/base.astro";
+import CartDrawer from "../../components/buttr/cart-drawer.astro";
+import Logo from "../../components/buttr/logo.astro";
+import { getProduct, getCart } from "../../lib/wix";
+import { formatMoney, variantPayload } from "../../lib/buttr";
 import { SEO } from "@wix/seo/components";
 import { loadSEOTagsServiceConfig } from "@wix/seo/services";
 import { seoTags } from "@wix/seo";
 
 const params = Astro.params;
-const [product, seoTagsServiceConfig] = await Promise.all([
+const [product, cart, seoTagsServiceConfig] = await Promise.all([
   getProduct(params.handle!),
+  getCart(),
   loadSEOTagsServiceConfig({
     pageUrl: Astro.url.href,
     itemType: seoTags.ItemType.STORES_PRODUCT,
@@ -30,6 +29,15 @@ const [product, seoTagsServiceConfig] = await Promise.all([
 ]);
 
 if (!product) return new Response(null, { status: 404 });
+
+const totalQuantity = cart?.totalQuantity ?? 0;
+const image = product.images[0] ?? product.featuredImage;
+const price = formatMoney(
+  product.priceRange.minVariantPrice.amount,
+  product.priceRange.minVariantPrice.currencyCode,
+);
+const variant = product.variants[0];
+const soldOut = !product.availableForSale || !variant?.availableForSale;
 
 const productJsonLd = {
   "@context": "https://schema.org",
@@ -49,34 +57,63 @@ const productJsonLd = {
 };
 ---
 
-<Layout>
+<Base title={`${product.title} — buttr`} description={product.description}>
   <SEO.Tags seoTagsServiceConfig={seoTagsServiceConfig} slot="seo-tags" />
-  <script
-    type="application/ld+json"
-    set:html={JSON.stringify(productJsonLd)}
-    is:inline
-  />
-  <form id="view-selections"></form>
-  <form id="add-to-cart" method="post" action={actions.addItemToCart}></form>
-  <div class="mx-auto max-w-(--breakpoint-2xl) px-4">
-    <div
-      class="flex flex-col rounded-lg border border-neutral-200 bg-white p-8 md:p-12 lg:flex-row lg:gap-8 dark:border-neutral-800 dark:bg-black"
-    >
-      <div class="h-full w-full basis-full lg:basis-4/6">
-        <Gallery
-          images={product.images.slice(0, 5).map((image: Image) => ({
-            src: image.url,
-            altText: image.altText,
-          }))}
-        />
+  <script type="application/ld+json" set:html={JSON.stringify(productJsonLd)} is:inline />
+
+  <nav class="pdp-nav">
+    <a href="/" aria-label="buttr home"><Logo height={28} /></a>
+    <div></div>
+    <div style="justify-self:end">
+      <label class="cart-btn" for="cart-modal" aria-label="Open cart" style="color:var(--ink);border:1px solid var(--rule)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px">
+          <path d="M5 7h14l-1.2 11.2A2 2 0 0 1 15.8 20H8.2a2 2 0 0 1-2-1.8L5 7z"></path>
+          <path d="M9 7V5a3 3 0 0 1 6 0v2"></path>
+        </svg>
+        <span class="cart-badge" style={`transform:scale(${totalQuantity > 0 ? 1 : 0});border:none`}>{totalQuantity}</span>
+      </label>
+    </div>
+  </nav>
+
+  <div class="pdp-wrap">
+    <a href="/" class="pdp-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back to shop
+    </a>
+
+    <div class="pdp-grid">
+      <div class="pdp-image">
+        {image?.url && <img src={image.url} alt={image.altText || product.title} />}
       </div>
 
-      <div class="basis-full lg:basis-2/6">
-        <ProductDescription product={product} />
+      <div>
+        <h1 class="pdp-title">{product.title}</h1>
+        <p class="pdp-price">{price}</p>
+        {product.description && <p class="pdp-desc">{product.description}</p>}
+
+        {
+          soldOut ? (
+            <button class="pdp-add" disabled>Sold out</button>
+          ) : (
+            <form method="post" action={actions.addItemToCart}>
+              <input type="hidden" name="productId" value={product.id} />
+              <input type="hidden" name="variant" value={variantPayload(product)} />
+              <button type="submit" class="pdp-add">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add to box
+              </button>
+            </form>
+          )
+        }
       </div>
     </div>
-    <RelatedProducts id={product.id} />
   </div>
 
-  <Footer />
-</Layout>
+  <CartDrawer cart={cart} />
+</Base>

@@ -1,0 +1,71 @@
+---
+import type { CartItem, Product } from "../../lib/wix/types";
+import { BAKES_SUBCATEGORY_ORDER, getBakesSubcategory } from "../../lib/buttr";
+import ItemRow from "./item-row.astro";
+
+interface Props {
+  products: Product[];
+  half: "bakes" | "brews";
+  cartByHandle: Map<string, CartItem>;
+}
+const { products, half, cartByHandle } = Astro.props;
+const isBakesHalf = half === "bakes";
+
+const groups = new Map<string, Product[]>();
+if (isBakesHalf) {
+  for (const label of BAKES_SUBCATEGORY_ORDER) groups.set(label, []);
+  for (const p of products) groups.get(getBakesSubcategory(p))!.push(p);
+} else {
+  for (const p of products) {
+    const key = "Brews";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(p);
+  }
+}
+
+const entries = [...groups.entries()].filter(([, items]) => items.length > 0);
+---
+
+<div class={`menu-group${isBakesHalf ? "" : " reverse"}`}>
+  <div class="menu-image reveal">
+    <img
+      src={isBakesHalf ? "/buttr/mascot-bakery.png" : "/buttr/mascot-coffee.png"}
+      alt={isBakesHalf ? "buttr bakery mascot" : "buttr coffee mascot"}
+      loading="lazy"
+    />
+  </div>
+  <div class="menu-body">
+    <div class="menu-group-head">
+      <img
+        class="head-sticker"
+        src={isBakesHalf ? "/buttr/stickers/croissant.png" : "/buttr/stickers/coffee-bean.png"}
+        alt=""
+      />
+      <div class="group-label">{isBakesHalf ? "Half One" : "Half Two"}</div>
+      <h3 class="group-title reveal">
+        The <em>{isBakesHalf ? "Bakes." : "Brews."}</em>
+      </h3>
+      <p class="group-desc reveal">
+        {
+          isBakesHalf
+            ? "Folded by hand, fermented slow, finished while still warm."
+            : "Single-origin beans, roasted within the week."
+        }
+      </p>
+    </div>
+    {
+      entries.map(([label, items]) => (
+        <div class="subgroup reveal">
+          <div class="subgroup-head">
+            <span class="subgroup-name">{label.toUpperCase()}</span>
+            <span class="subgroup-rule" />
+            <span class="subgroup-count">{items.length}</span>
+          </div>
+          {items.map((p) => (
+            <ItemRow product={p} cartLine={cartByHandle.get(p.handle)} />
+          ))}
+        </div>
+      ))
+    }
+  </div>
+</div>

@@ -1,0 +1,137 @@
+---
+import { actions } from "astro:actions";
+import { Image } from "astro:assets";
+import type { Cart } from "../../lib/wix/types";
+
+interface Props {
+  cart?: Cart;
+}
+const { cart } = Astro.props;
+
+const addResult = Astro.getActionResult(actions.addItemToCart);
+const delResult = Astro.getActionResult(actions.deleteItemFromCart);
+const updResult = Astro.getActionResult(actions.updateItemQuantity);
+const open =
+  addResult?.data === null ||
+  delResult?.data === null ||
+  updResult?.data === null;
+
+const lines = cart?.lines ?? [];
+const currency = cart?.cost.totalAmount.currencyCode ?? "USD";
+
+function money(amount: string | number, code = currency) {
+  const n = typeof amount === "string" ? parseFloat(amount) : amount;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+    }).format(n);
+  } catch {
+    return `${code} ${n.toFixed(2)}`;
+  }
+}
+
+const subtotal = cart?.cost.subtotalAmount.amount ?? "0";
+const total = cart?.cost.totalAmount.amount ?? "0";
+---
+
+<input type="checkbox" id="cart-modal" class="hidden" checked={open} />
+<label class="cart-overlay" for="cart-modal" aria-hidden="true"></label>
+
+<aside class="cart-drawer" aria-label="Your box">
+  <div class="cart-top">
+    <h3>Your <em>box</em></h3>
+    <label class="cart-close-btn" for="cart-modal" aria-label="Close cart">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" style="width:12px;height:12px">
+        <line x1="1" y1="1" x2="13" y2="13"></line>
+        <line x1="13" y1="1" x2="1" y2="13"></line>
+      </svg>
+    </label>
+  </div>
+
+  <div class="cart-body">
+    {
+      lines.length === 0 ? (
+        <div class="cart-empty-state">
+          <img class="empty-sticker animate-empty-float" src="/buttr/stickers/takeaway-cup.png" alt="" />
+          Nothing in the box yet.
+          <span class="empty-sub">Add a warm thing to begin</span>
+        </div>
+      ) : (
+        lines.map((item) => {
+          const img = item.merchandise.product.featuredImage;
+          const lineTotal = item.cost.totalAmount.amount;
+          const unit = item.quantity ? parseFloat(lineTotal) / item.quantity : 0;
+          return (
+            <div class="cart-line">
+              <div class="line-thumb">
+                {img?.url ? (
+                  <Image src={img.url} alt={img.altText || item.merchandise.product.title} width={60} height={76} loading="lazy" />
+                ) : (
+                  <div style="width:100%;height:100%;background:var(--butter)" />
+                )}
+              </div>
+              <div>
+                <div class="line-name">{item.merchandise.product.title}</div>
+                <div class="line-price">{money(unit)} each</div>
+                <div class="line-qty">
+                  <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+                    <input type="hidden" name="lineId" value={item.id} />
+                    <input type="hidden" name="variantId" value={item.merchandise.id} />
+                    <input type="hidden" name="quantity" value={item.quantity - 1} />
+                    <button type="submit" aria-label="decrease">−</button>
+                  </form>
+                  <span class="v">{item.quantity}</span>
+                  <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+                    <input type="hidden" name="lineId" value={item.id} />
+                    <input type="hidden" name="variantId" value={item.merchandise.id} />
+                    <input type="hidden" name="quantity" value={item.quantity + 1} />
+                    <button type="submit" aria-label="increase">+</button>
+                  </form>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <span class="line-total">{money(lineTotal)}</span>
+                <form method="post" action={actions.deleteItemFromCart}>
+                  <input type="hidden" name="lineId" value={item.id} />
+                  <button type="submit" class="line-remove">Remove</button>
+                </form>
+              </div>
+            </div>
+          );
+        })
+      )
+    }
+  </div>
+
+  {
+    lines.length > 0 && (
+      <div class="cart-foot">
+        <div class="cart-row">
+          <span class="rl">Subtotal</span>
+          <span class="rv">{money(subtotal)}</span>
+        </div>
+        <div class="cart-row">
+          <span class="rl">Shipping</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted-fg)">
+            Calculated at checkout
+          </span>
+        </div>
+        <div class="cart-row totals">
+          <span class="rl">Total</span>
+          <span class="rv">{money(total)}</span>
+        </div>
+        <form method="get" action="/api/checkout" data-astro-reload>
+          <button type="submit" class="checkout-btn">
+            Checkout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
+        </form>
+        <div class="ship-note">Secure checkout via Wix · Ships next business day</div>
+      </div>
+    )
+  }
+</aside>
