@@ -390,6 +390,17 @@ export async function getCollectionProducts({
   return products.map(reshapeProduct);
 }
 
+// Wix Stores creates a default "All Products" category that contains every
+// product. It should not appear as its own menu section (and would otherwise
+// duplicate every product). Match it by its default slug/name.
+const DEFAULT_ALL_CATEGORY_SLUGS = new Set(["all-products"]);
+function isDefaultAllCategory(c: categories.Category): boolean {
+  return (
+    DEFAULT_ALL_CATEGORY_SLUGS.has(c.slug ?? "") ||
+    (c.name ?? "").trim().toLowerCase() === "all products"
+  );
+}
+
 async function getProductsByCategoryId(categoryId: string): Promise<Product[]> {
   const { products = [] } = await productsV3.searchProducts(
     {
@@ -425,20 +436,27 @@ export async function getMenu(): Promise<MenuHalf[]> {
   );
 
   const visible = items.filter(
-    (c) => c.visible !== false && !(c.slug ?? "").startsWith("hidden")
+    (c) =>
+      c.visible !== false &&
+      !(c.slug ?? "").startsWith("hidden") &&
+      !isDefaultAllCategory(c)
   );
 
+  // REST returns `id`; the SDK exposes `_id` — read both so the tree can't
+  // silently collapse into every category looking top-level.
+  const parentIdOf = (c: categories.Category) =>
+    c.parentCategory?._id ?? (c.parentCategory as any)?.id ?? null;
   const order = (c: categories.Category) => c.parentCategory?.index ?? 0;
   const byOrder = (a: categories.Category, b: categories.Category) =>
     order(a) - order(b) || (a.name ?? "").localeCompare(b.name ?? "");
 
-  const tops = visible.filter((c) => !c.parentCategory?._id).sort(byOrder);
+  const tops = visible.filter((c) => !parentIdOf(c)).sort(byOrder);
 
   const halves: MenuHalf[] = [];
 
   for (const top of tops) {
     const children = visible
-      .filter((c) => c.parentCategory?._id === top._id)
+      .filter((c) => parentIdOf(c) === top._id)
       .sort(byOrder);
 
     let subgroups: MenuSubgroup[];
