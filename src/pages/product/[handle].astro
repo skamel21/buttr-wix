@@ -12,7 +12,7 @@ import Base from "../../components/buttr/base.astro";
 import CartDrawer from "../../components/buttr/cart-drawer.astro";
 import Logo from "../../components/buttr/logo.astro";
 import { getProduct, getCart } from "../../lib/wix";
-import { formatMoney, variantPayload } from "../../lib/buttr";
+import { formatMoney, stripHtml, variantPayload } from "../../lib/buttr";
 import { SEO } from "@wix/seo/components";
 import { loadSEOTagsServiceConfig } from "@wix/seo/services";
 import { seoTags } from "@wix/seo";
@@ -36,6 +36,7 @@ const price = formatMoney(
   product.priceRange.minVariantPrice.amount,
   product.priceRange.minVariantPrice.currencyCode,
 );
+const description = stripHtml(product.description);
 const variant = product.variants[0];
 const soldOut = !product.availableForSale || !variant?.availableForSale;
 
@@ -57,7 +58,7 @@ const productJsonLd = {
 };
 ---
 
-<Base title={`${product.title} — buttr`} description={product.description}>
+<Base title={`${product.title} — buttr`} description={description}>
   <SEO.Tags seoTagsServiceConfig={seoTagsServiceConfig} slot="seo-tags" />
   <script type="application/ld+json" set:html={JSON.stringify(productJsonLd)} is:inline />
 
@@ -92,7 +93,7 @@ const productJsonLd = {
       <div>
         <h1 class="pdp-title">{product.title}</h1>
         <p class="pdp-price">{price}</p>
-        {product.description && <p class="pdp-desc">{product.description}</p>}
+        {description && <p class="pdp-desc">{description}</p>}
 
         {
           soldOut ? (

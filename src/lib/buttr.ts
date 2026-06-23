@@ -2,6 +2,23 @@ import type { Product } from "./wix/types";
 
 const S = "/buttr/stickers";
 
+/** Wix descriptions can contain HTML (e.g. <p>…</p>). Render them as clean text. */
+export function stripHtml(input?: string | null): string {
+  if (!input) return "";
+  return input
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(p|div|li)>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function formatMoney(amount: string | number, currencyCode = "USD") {
   const n = typeof amount === "string" ? parseFloat(amount) : amount;
   try {
