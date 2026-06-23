@@ -75,14 +75,14 @@ const total = cart?.cost.totalAmount.amount ?? "0";
                 <div class="line-name">{item.merchandise.product.title}</div>
                 <div class="line-price">{money(unit)} each</div>
                 <div class="line-qty">
-                  <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+                  <form method="post" action={actions.updateItemQuantity} data-cart style="display:inline-flex">
                     <input type="hidden" name="lineId" value={item.id} />
                     <input type="hidden" name="variantId" value={item.merchandise.id} />
                     <input type="hidden" name="quantity" value={item.quantity - 1} />
                     <button type="submit" aria-label="decrease">−</button>
                   </form>
                   <span class="v">{item.quantity}</span>
-                  <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+                  <form method="post" action={actions.updateItemQuantity} data-cart style="display:inline-flex">
                     <input type="hidden" name="lineId" value={item.id} />
                     <input type="hidden" name="variantId" value={item.merchandise.id} />
                     <input type="hidden" name="quantity" value={item.quantity + 1} />
@@ -92,7 +92,7 @@ const total = cart?.cost.totalAmount.amount ?? "0";
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                 <span class="line-total">{money(lineTotal)}</span>
-                <form method="post" action={actions.deleteItemFromCart}>
+                <form method="post" action={actions.deleteItemFromCart} data-cart>
                   <input type="hidden" name="lineId" value={item.id} />
                   <button type="submit" class="line-remove">Remove</button>
                 </form>
@@ -135,3 +135,68 @@ const total = cart?.cost.totalAmount.amount ?? "0";
     )
   }
 </aside>
+
+<script is:inline>
+  // Progressive enhancement: handle add / update / remove without a full page
+  // reload. Forms still work natively if JS is disabled.
+  (function () {
+    if (window.__buttrCartWired) return;
+    window.__buttrCartWired = true;
+
+    let busy = false;
+    const openDrawer = () => {
+      const c = document.getElementById("cart-modal");
+      if (c) c.checked = true;
+    };
+
+    async function refresh() {
+      const res = await fetch(location.pathname + location.search, {
+        headers: { "x-cart-refresh": "1" },
+      });
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+
+      const swap = (sel, forceReveal) => {
+        const next = doc.querySelector(sel);
+        const cur = document.querySelector(sel);
+        if (!next || !cur) return;
+        if (forceReveal)
+          next.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
+        cur.replaceWith(next);
+      };
+
+      swap(".cart-drawer", false);
+      swap(".menu-wrap", true);
+
+      const nb = doc.querySelector(".cart-badge");
+      if (nb)
+        document.querySelectorAll(".cart-badge").forEach((b) => {
+          b.textContent = nb.textContent;
+          b.style.transform = nb.style.transform;
+        });
+    }
+
+    document.addEventListener("submit", async (e) => {
+      const form = e.target;
+      if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-cart"))
+        return;
+      e.preventDefault();
+      if (busy) return;
+      busy = true;
+      const shouldOpen = form.hasAttribute("data-cart-open");
+      try {
+        await fetch(form.action, {
+          method: "POST",
+          body: new FormData(form),
+          redirect: "manual",
+        });
+        await refresh();
+        if (shouldOpen) openDrawer();
+      } catch (err) {
+        // Fall back to a normal submit if anything goes wrong.
+        form.submit();
+        return;
+      }
+      busy = false;
+    });
+  })();
+</script>

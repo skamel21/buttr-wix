@@ -11,6 +11,7 @@ const { product, cartLine } = Astro.props;
 
 const variant = product.variants[0];
 const isSoldOut = !product.availableForSale || !variant?.availableForSale;
+const img = product.featuredImage?.url ? product.featuredImage : product.images[0];
 const price = formatMoney(
   product.priceRange.minVariantPrice.amount,
   product.priceRange.minVariantPrice.currencyCode,
@@ -20,6 +21,15 @@ const description = stripHtml(product.description);
 ---
 
 <div class={`item-row${isSoldOut ? " sold-out" : ""}`}>
+  <a class="item-thumb" href={`/product/${product.handle}`} aria-label={product.title}>
+    {
+      img?.url ? (
+        <img src={img.url} alt={img.altText || product.title} loading="lazy" />
+      ) : (
+        <div style="width:100%;height:100%;background:var(--butter)" />
+      )
+    }
+  </a>
   <div class="item-info">
     <div class="item-top">
       <span class="item-name">{product.title}</span>
@@ -32,7 +42,7 @@ const description = stripHtml(product.description);
       isSoldOut ? (
         <span class="sold-tag">Sold out</span>
       ) : qty === 0 ? (
-        <form method="post" action={actions.addItemToCart}>
+        <form method="post" action={actions.addItemToCart} data-cart data-cart-open>
           <input type="hidden" name="productId" value={product.id} />
           <input type="hidden" name="variant" value={variantPayload(product)} />
           <button type="submit" class="item-add-btn" aria-label="Add to cart">
@@ -44,7 +54,7 @@ const description = stripHtml(product.description);
         </form>
       ) : (
         <div class="item-counter animate-counter-in">
-          <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+          <form method="post" action={actions.updateItemQuantity} data-cart style="display:inline-flex">
             <input type="hidden" name="lineId" value={cartLine!.id} />
             <input type="hidden" name="variantId" value={cartLine!.merchandise.id} />
             <input type="hidden" name="quantity" value={qty - 1} />
@@ -55,7 +65,7 @@ const description = stripHtml(product.description);
             </button>
           </form>
           <span class="v">{qty}</span>
-          <form method="post" action={actions.updateItemQuantity} style="display:inline-flex">
+          <form method="post" action={actions.updateItemQuantity} data-cart style="display:inline-flex">
             <input type="hidden" name="lineId" value={cartLine!.id} />
             <input type="hidden" name="variantId" value={cartLine!.merchandise.id} />
             <input type="hidden" name="quantity" value={qty + 1} />
